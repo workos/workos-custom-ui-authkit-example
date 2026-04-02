@@ -94,13 +94,30 @@ The app handles these WorkOS authentication errors:
 - `organization_selection_required` — user belongs to multiple orgs, show picker
 - `sso_required` — domain requires SSO, redirect to IdP (fallback if domain check missed it)
 
+## UI
+
+The frontend is built with [Radix Themes](https://www.radix-ui.com/themes) — a set of accessible, themeable components that handle dark mode, spacing, typography, and interactive states out of the box. The app uses `appearance="dark"` with the `iris` accent color, configured in `main.tsx`:
+
+```tsx
+<Theme appearance="dark" accentColor="iris" radius="medium" scaling="100%">
+  <App />
+</Theme>
+```
+
+Components like `Card`, `Button`, `TextField`, `Callout`, `Badge`, `Spinner`, and `Separator` come directly from `@radix-ui/themes`. A small `app.css` file handles page layout and a few custom elements (Google OAuth button, org picker cards) using Radix CSS variables for theme consistency.
+
 ## Project structure
 
 ```
 ├── server.js          # Express backend — all auth endpoints
+├── server.test.js     # Backend tests (vitest + supertest)
 ├── src/
 │   ├── App.tsx        # React frontend — login, org picker, dashboard
-│   └── main.tsx       # React entry point
+│   ├── api.ts         # Fetch wrapper with CSRF handling
+│   ├── types.ts       # Shared TypeScript interfaces
+│   ├── app.css        # Page layout + Radix theme overrides
+│   └── main.tsx       # React entry point (Radix Theme provider)
+├── vitest.config.ts   # Test configuration
 ├── index.html         # Vite HTML shell
 ├── vite.config.ts     # Vite config with proxy to backend
 ├── .env.example       # Environment variable template
