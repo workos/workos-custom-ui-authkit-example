@@ -12,7 +12,7 @@ export interface OrgChoice {
 }
 
 export interface AuthResponse {
-  status: string;
+  status: "authenticated";
   user: User;
   organizationId?: string;
 }
@@ -61,4 +61,12 @@ export interface LogEntry {
   url: string;
   status: number;
   body: unknown;
+}
+
+export function isOrgRequired(d: unknown): d is OrgRequiredResponse {
+  return (d as OrgRequiredResponse)?.status === "org_selection_required";
+}
+
+export function isSsoRequired(d: unknown): d is SsoRequiredResponse {
+  return (d as SsoRequiredResponse)?.status === "sso_required";
 }
