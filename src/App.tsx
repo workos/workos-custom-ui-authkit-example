@@ -1,15 +1,15 @@
-import { Card, Flex, Heading, Spinner } from "@radix-ui/themes";
-import { useAuth } from "./hooks/useAuth";
-import { LoginView } from "./views/LoginView";
-import { MagicCodeView } from "./views/MagicCodeView";
-import { OrgPickerView } from "./views/OrgPickerView";
-import { DashboardView } from "./views/DashboardView";
-import "./app.css";
+import { Card, Flex, Heading, Spinner } from '@radix-ui/themes';
+import { useAuth } from './hooks/useAuth';
+import { LoginView } from './views/LoginView';
+import { MagicCodeView } from './views/MagicCodeView';
+import { OrgPickerView } from './views/OrgPickerView';
+import { DashboardView } from './views/DashboardView';
+import './app.css';
 
 export default function App() {
   const auth = useAuth();
 
-  if (auth.view === "loading") {
+  if (auth.view === 'loading') {
     return (
       <Flex className="page" align="center" justify="center">
         <Card size="3" className="auth-card">
@@ -22,7 +22,7 @@ export default function App() {
     );
   }
 
-  if (auth.view === "login") {
+  if (auth.view === 'login') {
     return (
       <LoginView
         loginStep={auth.loginStep}
@@ -40,7 +40,7 @@ export default function App() {
     );
   }
 
-  if (auth.view === "magic-code") {
+  if (auth.view === 'magic-code') {
     return (
       <MagicCodeView
         email={auth.email}
@@ -55,7 +55,7 @@ export default function App() {
     );
   }
 
-  if (auth.view === "org-picker") {
+  if (auth.view === 'org-picker') {
     return (
       <OrgPickerView
         orgChoices={auth.orgChoices}
@@ -69,12 +69,5 @@ export default function App() {
   }
 
   // view === "dashboard"
-  return (
-    <DashboardView
-      user={auth.user!}
-      orgId={auth.orgId}
-      logs={auth.logs}
-      onLogout={auth.logout}
-    />
-  );
+  return <DashboardView user={auth.user!} orgId={auth.orgId} logs={auth.logs} onLogout={auth.logout} />;
 }

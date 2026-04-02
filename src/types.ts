@@ -12,25 +12,25 @@ export interface OrgChoice {
 }
 
 export interface AuthResponse {
-  status: "authenticated";
+  status: 'authenticated';
   user: User;
   organizationId?: string;
 }
 
 export interface OrgRequiredResponse {
-  status: "org_selection_required";
+  status: 'org_selection_required';
   pendingAuthenticationToken: string;
   organizations: OrgChoice[];
 }
 
 export interface SsoRequiredResponse {
-  status: "sso_required";
+  status: 'sso_required';
   connectionIds: string[];
   email?: string;
 }
 
 export interface CheckEmailResponse {
-  method: "sso" | "credentials";
+  method: 'sso' | 'credentials';
   ssoUrl?: string;
 }
 
@@ -42,18 +42,13 @@ export interface SessionResponse {
 }
 
 export interface ErrorResponse {
-  status: "error";
+  status: 'error';
   error: string;
 }
 
-export type View =
-  | "loading"
-  | "login"
-  | "magic-code"
-  | "org-picker"
-  | "dashboard";
+export type View = 'loading' | 'login' | 'magic-code' | 'org-picker' | 'dashboard';
 
-export type LoginStep = "email" | "credentials";
+export type LoginStep = 'email' | 'credentials';
 
 export interface LogEntry {
   ts: string;
@@ -64,9 +59,9 @@ export interface LogEntry {
 }
 
 export function isOrgRequired(d: unknown): d is OrgRequiredResponse {
-  return (d as OrgRequiredResponse)?.status === "org_selection_required";
+  return (d as OrgRequiredResponse)?.status === 'org_selection_required';
 }
 
 export function isSsoRequired(d: unknown): d is SsoRequiredResponse {
-  return (d as SsoRequiredResponse)?.status === "sso_required";
+  return (d as SsoRequiredResponse)?.status === 'sso_required';
 }

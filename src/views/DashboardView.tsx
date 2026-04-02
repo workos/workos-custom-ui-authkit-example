@@ -1,6 +1,6 @@
-import { Avatar, Badge, Box, Button, Card, Code, Flex, Heading, Text } from "@radix-ui/themes";
-import type { LogEntry, User } from "../types";
-import { LogPanel } from "../components/LogPanel";
+import { Avatar, Badge, Box, Button, Card, Code, Flex, Heading, Text } from '@radix-ui/themes';
+import type { LogEntry, User } from '../types';
+import { LogPanel } from '../components/LogPanel';
 
 interface Props {
   user: User;
@@ -13,7 +13,9 @@ export function DashboardView({ user, orgId, logs, onLogout }: Props) {
   return (
     <div className="page">
       <Card size="3" className="auth-card">
-        <Heading size="5" align="center" mb="5">Dashboard</Heading>
+        <Heading size="5" align="center" mb="5">
+          Dashboard
+        </Heading>
 
         <Flex align="center" gap="4" mb="5">
           <Avatar
@@ -24,7 +26,7 @@ export function DashboardView({ user, orgId, logs, onLogout }: Props) {
           />
           <Box>
             <Text size="3" weight="bold">
-              {[user.firstName, user.lastName].filter(Boolean).join(" ") || user.email}
+              {[user.firstName, user.lastName].filter(Boolean).join(' ') || user.email}
             </Text>
             <Text size="2" color="gray" asChild>
               <div>{user.email}</div>
@@ -34,14 +36,20 @@ export function DashboardView({ user, orgId, logs, onLogout }: Props) {
 
         {orgId && (
           <Box mb="4">
-            <Badge color="iris" size="2">Org: {orgId}</Badge>
+            <Badge color="iris" size="2">
+              Org: {orgId}
+            </Badge>
           </Box>
         )}
 
         <Card size="2" mb="4">
           <Flex direction="column" gap="1">
-            <Text size="1" color="gray">User ID</Text>
-            <Code size="2" variant="ghost">{user.id}</Code>
+            <Text size="1" color="gray">
+              User ID
+            </Text>
+            <Code size="2" variant="ghost">
+              {user.id}
+            </Code>
           </Flex>
         </Card>
 
