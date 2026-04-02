@@ -23,20 +23,19 @@ const mockListConnections = vi.fn();
 
 vi.mock("@workos-inc/node", () => {
   class MockWorkOS {
-    constructor() {
-      this.userManagement = {
-        authenticateWithPassword: mockAuthenticateWithPassword,
-        createMagicAuth: mockCreateMagicAuth,
-        authenticateWithMagicAuth: mockAuthenticateWithMagicAuth,
-        authenticateWithCode: mockAuthenticateWithCode,
-        authenticateWithOrganizationSelection: mockAuthenticateWithOrganizationSelection,
-        getAuthorizationUrl: mockGetAuthorizationUrl,
-        loadSealedSession: mockLoadSealedSession,
-      };
-      this.sso = {
-        listConnections: mockListConnections,
-      };
-    }
+    userManagement = {
+      authenticateWithPassword: mockAuthenticateWithPassword,
+      createMagicAuth: mockCreateMagicAuth,
+      authenticateWithMagicAuth: mockAuthenticateWithMagicAuth,
+      authenticateWithCode: mockAuthenticateWithCode,
+      authenticateWithOrganizationSelection:
+        mockAuthenticateWithOrganizationSelection,
+      getAuthorizationUrl: mockGetAuthorizationUrl,
+      loadSealedSession: mockLoadSealedSession,
+    };
+    sso = {
+      listConnections: mockListConnections,
+    };
   }
   return { WorkOS: MockWorkOS };
 });
@@ -51,15 +50,46 @@ const FAKE_USER = {
 
 const FAKE_SEALED_SESSION = "sealed_session_data_here";
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function extractCookies(res: Response): string {
+  return (res.headers.getSetCookie?.() ?? [])
+    .map((c: string) => c.split(";")[0])
+    .join("; ");
+}
+
+type App = Awaited<typeof import("./server")>["app"];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function json(res: Response): Promise<Record<string, any>> {
+  return (await res.json()) as Record<string, any>;
+}
+
+async function post(
+  app: App,
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  return await app.request(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
 // --------------------------------------------------------------------------
 // Unit tests for exported helper functions
 // --------------------------------------------------------------------------
 
 describe("isOrgSelectionRequired", () => {
-  let isOrgSelectionRequired;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let isOrgSelectionRequired: (err: any) => boolean;
 
   beforeAll(async () => {
-    const mod = await import("./server.js");
+    const mod = await import("./server");
     isOrgSelectionRequired = mod.isOrgSelectionRequired;
   });
 
@@ -110,10 +140,11 @@ describe("isOrgSelectionRequired", () => {
 });
 
 describe("isSsoRequired", () => {
-  let isSsoRequired;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let isSsoRequired: (err: any) => boolean;
 
   beforeAll(async () => {
-    const mod = await import("./server.js");
+    const mod = await import("./server");
     isSsoRequired = mod.isSsoRequired;
   });
 
@@ -143,57 +174,50 @@ describe("isSsoRequired", () => {
   });
 });
 
-describe("requireBody", () => {
-  let requireBody;
+describe("findMissingField", () => {
+  let findMissingField: (
+    body: Record<string, unknown>,
+    fields: string[],
+  ) => string | null;
 
   beforeAll(async () => {
-    const mod = await import("./server.js");
-    requireBody = mod.requireBody;
+    const mod = await import("./server");
+    findMissingField = mod.findMissingField;
   });
 
-  it("returns true when all required fields are present", () => {
-    const req = { body: { email: "a@b.com", password: "secret" } };
-    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
-    expect(requireBody(req, res, ["email", "password"])).toBe(true);
-    expect(res.status).not.toHaveBeenCalled();
+  it("returns null when all required fields are present", () => {
+    expect(
+      findMissingField({ email: "a@b.com", password: "secret" }, [
+        "email",
+        "password",
+      ]),
+    ).toBeNull();
   });
 
-  it("returns false and sends 400 when a field is missing", () => {
-    const req = { body: { email: "a@b.com" } };
-    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
-    expect(requireBody(req, res, ["email", "password"])).toBe(false);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({
-      status: "error",
-      error: "Missing required field: password",
-    });
+  it("returns missing field name when a field is missing", () => {
+    expect(
+      findMissingField({ email: "a@b.com" }, ["email", "password"]),
+    ).toBe("password");
   });
 
-  it("returns false when body is undefined", () => {
-    const req = {};
-    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
-    expect(requireBody(req, res, ["email"])).toBe(false);
+  it("returns first missing field when body is empty", () => {
+    expect(findMissingField({}, ["email"])).toBe("email");
   });
 
-  it("returns false when field is empty string", () => {
-    const req = { body: { email: "" } };
-    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
-    expect(requireBody(req, res, ["email"])).toBe(false);
+  it("returns field name when field is empty string", () => {
+    expect(findMissingField({ email: "" }, ["email"])).toBe("email");
   });
 });
 
 // --------------------------------------------------------------------------
-// Integration tests via supertest
+// Integration tests via app.request()
 // --------------------------------------------------------------------------
 
 describe("API routes", () => {
-  let request;
-  let app;
+  let app: App;
 
   beforeAll(async () => {
-    const supertest = await import("supertest");
-    request = supertest.default;
-    const mod = await import("./server.js");
+    const mod = await import("./server");
     app = mod.app;
   });
 
@@ -203,139 +227,148 @@ describe("API routes", () => {
 
   describe("GET /api/auth/csrf-token", () => {
     it("returns a csrfToken string", async () => {
-      const res = await request(app).get("/api/auth/csrf-token");
+      const res = await app.request("/api/auth/csrf-token");
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty("csrfToken");
-      expect(typeof res.body.csrfToken).toBe("string");
-      expect(res.body.csrfToken.length).toBeGreaterThan(0);
+      const body = await json(res);
+      expect(body).toHaveProperty("csrfToken");
+      expect(typeof body.csrfToken).toBe("string");
+      expect(body.csrfToken.length).toBeGreaterThan(0);
     });
   });
 
   describe("POST /api/auth/password", () => {
     it("rejects missing email", async () => {
-      const res = await request(app)
-        .post("/api/auth/password")
-        .send({ password: "secret" });
+      const res = await post(app, "/api/auth/password", { password: "secret" });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/email/i);
+      const body = await json(res);
+      expect(body.error).toMatch(/email/i);
     });
 
     it("rejects missing password", async () => {
-      const res = await request(app)
-        .post("/api/auth/password")
-        .send({ email: "a@b.com" });
+      const res = await post(app, "/api/auth/password", {
+        email: "a@b.com",
+      });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/password/i);
+      const body = await json(res);
+      expect(body.error).toMatch(/password/i);
     });
   });
 
   describe("POST /api/auth/magic-auth/send", () => {
     it("rejects missing email", async () => {
-      const res = await request(app)
-        .post("/api/auth/magic-auth/send")
-        .send({});
+      const res = await post(app, "/api/auth/magic-auth/send", {});
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/email/i);
+      const body = await json(res);
+      expect(body.error).toMatch(/email/i);
     });
   });
 
   describe("POST /api/auth/magic-auth/verify", () => {
     it("rejects missing code", async () => {
-      const res = await request(app)
-        .post("/api/auth/magic-auth/verify")
-        .send({ email: "a@b.com" });
+      const res = await post(app, "/api/auth/magic-auth/verify", {
+        email: "a@b.com",
+      });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/code/i);
+      const body = await json(res);
+      expect(body.error).toMatch(/code/i);
     });
   });
 
   describe("POST /api/auth/org-selection", () => {
     it("rejects missing pendingAuthenticationToken", async () => {
-      const res = await request(app)
-        .post("/api/auth/org-selection")
-        .send({ organizationId: "org_123" });
+      const res = await post(app, "/api/auth/org-selection", {
+        organizationId: "org_123",
+      });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/pendingAuthenticationToken/i);
+      const body = await json(res);
+      expect(body.error).toMatch(/pendingAuthenticationToken/i);
     });
 
     it("rejects missing organizationId", async () => {
-      const res = await request(app)
-        .post("/api/auth/org-selection")
-        .send({ pendingAuthenticationToken: "tok_123" });
+      const res = await post(app, "/api/auth/org-selection", {
+        pendingAuthenticationToken: "tok_123",
+      });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/organizationId/i);
+      const body = await json(res);
+      expect(body.error).toMatch(/organizationId/i);
     });
   });
 
   describe("POST /api/auth/check-email", () => {
     it("rejects missing email", async () => {
-      const res = await request(app)
-        .post("/api/auth/check-email")
-        .send({});
+      const res = await post(app, "/api/auth/check-email", {});
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/email/i);
+      const body = await json(res);
+      expect(body.error).toMatch(/email/i);
     });
   });
 
   describe("GET /api/auth/session", () => {
     it("returns 401 with no session cookie", async () => {
-      const res = await request(app).get("/api/auth/session");
+      const res = await app.request("/api/auth/session");
       expect(res.status).toBe(401);
-      expect(res.body.authenticated).toBe(false);
-      expect(res.body.reason).toBe("no_session_cookie");
+      const body = await json(res);
+      expect(body.authenticated).toBe(false);
+      expect(body.reason).toBe("no_session_cookie");
     });
 
     it("returns 401 with invalid session cookie", async () => {
-      const res = await request(app)
-        .get("/api/auth/session")
-        .set("Cookie", "wos-session=garbage");
+      const res = await app.request("/api/auth/session", {
+        headers: { Cookie: "wos-session=garbage" },
+      });
       expect(res.status).toBe(401);
-      expect(res.body.authenticated).toBe(false);
+      const body = await json(res);
+      expect(body.authenticated).toBe(false);
     });
   });
 
   describe("GET /api/auth/callback", () => {
     it("redirects to frontend with error when no code provided", async () => {
-      const res = await request(app).get("/api/auth/callback");
+      const res = await app.request("/api/auth/callback");
       expect(res.status).toBe(302);
-      expect(res.headers.location).toContain("error=");
+      expect(res.headers.get("location")).toContain("error=");
     });
 
     it("includes error_description in redirect when provided", async () => {
-      const res = await request(app).get(
+      const res = await app.request(
         "/api/auth/callback?error=access_denied&error_description=User+cancelled",
       );
       expect(res.status).toBe(302);
-      expect(res.headers.location).toContain("User%20cancelled");
+      expect(res.headers.get("location")).toContain("User%20cancelled");
     });
   });
 
   describe("GET /api/auth/sso", () => {
     it("redirects with error when no connection_id provided", async () => {
-      const res = await request(app).get("/api/auth/sso");
+      const res = await app.request("/api/auth/sso");
       expect(res.status).toBe(302);
-      expect(res.headers.location).toContain("error=");
-      expect(res.headers.location).toContain("Missing%20connection%20ID");
+      const location = res.headers.get("location")!;
+      expect(location).toContain("error=");
+      expect(location).toContain("Missing%20connection%20ID");
     });
   });
 
   describe("POST /api/auth/logout", () => {
     it("returns logged_out with valid CSRF token and no session", async () => {
-      const csrfRes = await request(app).get("/api/auth/csrf-token");
-      const { csrfToken } = csrfRes.body;
-      const cookies = csrfRes.headers["set-cookie"];
+      const csrfRes = await app.request("/api/auth/csrf-token");
+      const { csrfToken } = await json(csrfRes);
+      const cookies = extractCookies(csrfRes);
 
-      const res = await request(app)
-        .post("/api/auth/logout")
-        .set("Cookie", cookies)
-        .set("x-csrf-token", csrfToken);
+      const res = await app.request("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          Cookie: cookies,
+          "x-csrf-token": csrfToken as string,
+        },
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("logged_out");
+      const body = await json(res);
+      expect(body.status).toBe("logged_out");
     });
 
     it("rejects without CSRF token", async () => {
-      const res = await request(app).post("/api/auth/logout");
+      const res = await app.request("/api/auth/logout", { method: "POST" });
       expect(res.status).toBe(403);
     });
   });
@@ -352,62 +385,73 @@ describe("API routes", () => {
         organizationId: "org_01XYZ",
       });
 
-      const res = await request(app)
-        .post("/api/auth/password")
-        .send({ email: "test@example.com", password: "correct-password" });
+      const res = await post(app, "/api/auth/password", {
+        email: "test@example.com",
+        password: "correct-password",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("authenticated");
-      expect(res.body.user.id).toBe("user_01ABC");
-      expect(res.body.organizationId).toBe("org_01XYZ");
+      const body = await json(res);
+      expect(body.status).toBe("authenticated");
+      expect(body.user.id).toBe("user_01ABC");
+      expect(body.organizationId).toBe("org_01XYZ");
 
-      const setCookie = res.headers["set-cookie"];
-      expect(setCookie).toBeDefined();
-      expect(setCookie.some((c) => c.startsWith("wos-session="))).toBe(true);
+      const setCookies = res.headers.getSetCookie?.() ?? [];
+      expect(setCookies.some((c: string) => c.startsWith("wos-session="))).toBe(
+        true,
+      );
     });
   });
 
   describe("POST /api/auth/password — org selection required", () => {
     it("returns 403 with org list when user has multiple orgs", async () => {
       const orgErr = new Error("Organization selection required");
-      orgErr.rawData = {
-        code: "organization_selection_required",
-        pending_authentication_token: "pat_123",
-        organizations: [
-          { id: "org_A", name: "Acme" },
-          { id: "org_B", name: "Globex" },
-        ],
-      };
+      Object.assign(orgErr, {
+        rawData: {
+          code: "organization_selection_required",
+          pending_authentication_token: "pat_123",
+          organizations: [
+            { id: "org_A", name: "Acme" },
+            { id: "org_B", name: "Globex" },
+          ],
+        },
+      });
       mockAuthenticateWithPassword.mockRejectedValueOnce(orgErr);
 
-      const res = await request(app)
-        .post("/api/auth/password")
-        .send({ email: "multi@example.com", password: "secret" });
+      const res = await post(app, "/api/auth/password", {
+        email: "multi@example.com",
+        password: "secret",
+      });
 
       expect(res.status).toBe(403);
-      expect(res.body.status).toBe("org_selection_required");
-      expect(res.body.pendingAuthenticationToken).toBe("pat_123");
-      expect(res.body.organizations).toHaveLength(2);
+      const body = await json(res);
+      expect(body.status).toBe("org_selection_required");
+      expect(body.pendingAuthenticationToken).toBe("pat_123");
+      expect(body.organizations).toHaveLength(2);
     });
   });
 
   describe("POST /api/auth/password — SSO required", () => {
     it("returns 403 with sso_required when domain enforces SSO", async () => {
       const ssoErr = new Error("SSO required");
-      ssoErr.rawData = {
-        error: "sso_required",
-        connection_ids: ["conn_abc"],
-        email: "user@sso-domain.com",
-      };
+      Object.assign(ssoErr, {
+        rawData: {
+          error: "sso_required",
+          connection_ids: ["conn_abc"],
+          email: "user@sso-domain.com",
+        },
+      });
       mockAuthenticateWithPassword.mockRejectedValueOnce(ssoErr);
 
-      const res = await request(app)
-        .post("/api/auth/password")
-        .send({ email: "user@sso-domain.com", password: "secret" });
+      const res = await post(app, "/api/auth/password", {
+        email: "user@sso-domain.com",
+        password: "secret",
+      });
 
       expect(res.status).toBe(403);
-      expect(res.body.status).toBe("sso_required");
-      expect(res.body.connectionIds).toEqual(["conn_abc"]);
+      const body = await json(res);
+      expect(body.status).toBe("sso_required");
+      expect(body.connectionIds).toEqual(["conn_abc"]);
     });
   });
 
@@ -415,13 +459,16 @@ describe("API routes", () => {
     it("returns sent status", async () => {
       mockCreateMagicAuth.mockResolvedValueOnce({ id: "magic_123" });
 
-      const res = await request(app)
-        .post("/api/auth/magic-auth/send")
-        .send({ email: "test@example.com" });
+      const res = await post(app, "/api/auth/magic-auth/send", {
+        email: "test@example.com",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("sent");
-      expect(mockCreateMagicAuth).toHaveBeenCalledWith({ email: "test@example.com" });
+      const body = await json(res);
+      expect(body.status).toBe("sent");
+      expect(mockCreateMagicAuth).toHaveBeenCalledWith({
+        email: "test@example.com",
+      });
     });
   });
 
@@ -433,13 +480,15 @@ describe("API routes", () => {
         organizationId: null,
       });
 
-      const res = await request(app)
-        .post("/api/auth/magic-auth/verify")
-        .send({ email: "test@example.com", code: "123456" });
+      const res = await post(app, "/api/auth/magic-auth/verify", {
+        email: "test@example.com",
+        code: "123456",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("authenticated");
-      expect(res.body.user.email).toBe("test@example.com");
+      const body = await json(res);
+      expect(body.status).toBe("authenticated");
+      expect(body.user.email).toBe("test@example.com");
     });
   });
 
@@ -451,13 +500,15 @@ describe("API routes", () => {
         organizationId: "org_chosen",
       });
 
-      const res = await request(app)
-        .post("/api/auth/org-selection")
-        .send({ pendingAuthenticationToken: "pat_123", organizationId: "org_chosen" });
+      const res = await post(app, "/api/auth/org-selection", {
+        pendingAuthenticationToken: "pat_123",
+        organizationId: "org_chosen",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("authenticated");
-      expect(res.body.organizationId).toBe("org_chosen");
+      const body = await json(res);
+      expect(body.status).toBe("authenticated");
+      expect(body.organizationId).toBe("org_chosen");
     });
   });
 
@@ -465,56 +516,70 @@ describe("API routes", () => {
     it("returns ssoUrl for domain with active SSO connection", async () => {
       mockListConnections.mockResolvedValueOnce({
         data: [
-          { id: "conn_abc", state: "active", connectionType: "OktaSAML", organizationId: "org_X" },
+          {
+            id: "conn_abc",
+            state: "active",
+            connectionType: "OktaSAML",
+            organizationId: "org_X",
+          },
         ],
       });
 
-      const res = await request(app)
-        .post("/api/auth/check-email")
-        .send({ email: "user@sso-corp.com" });
+      const res = await post(app, "/api/auth/check-email", {
+        email: "user@sso-corp.com",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.method).toBe("sso");
-      expect(res.body.ssoUrl).toBe("/api/auth/sso?connection_id=conn_abc");
-      expect(res.body).not.toHaveProperty("connectionId");
-      expect(res.body).not.toHaveProperty("organizationId");
+      const body = await json(res);
+      expect(body.method).toBe("sso");
+      expect(body.ssoUrl).toBe("/api/auth/sso?connection_id=conn_abc");
+      expect(body).not.toHaveProperty("connectionId");
+      expect(body).not.toHaveProperty("organizationId");
     });
 
     it("returns credentials for domain with no SSO connections", async () => {
       mockListConnections.mockResolvedValueOnce({ data: [] });
 
-      const res = await request(app)
-        .post("/api/auth/check-email")
-        .send({ email: "user@no-sso.com" });
+      const res = await post(app, "/api/auth/check-email", {
+        email: "user@no-sso.com",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.method).toBe("credentials");
+      const body = await json(res);
+      expect(body.method).toBe("credentials");
     });
 
     it("returns credentials for domain with only inactive connections", async () => {
       mockListConnections.mockResolvedValueOnce({
         data: [
-          { id: "conn_old", state: "inactive", connectionType: "OktaSAML", organizationId: "org_Y" },
+          {
+            id: "conn_old",
+            state: "inactive",
+            connectionType: "OktaSAML",
+            organizationId: "org_Y",
+          },
         ],
       });
 
-      const res = await request(app)
-        .post("/api/auth/check-email")
-        .send({ email: "user@old-sso.com" });
+      const res = await post(app, "/api/auth/check-email", {
+        email: "user@old-sso.com",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.method).toBe("credentials");
+      const body = await json(res);
+      expect(body.method).toBe("credentials");
     });
 
     it("falls back to credentials if listConnections throws", async () => {
       mockListConnections.mockRejectedValueOnce(new Error("API down"));
 
-      const res = await request(app)
-        .post("/api/auth/check-email")
-        .send({ email: "user@error-domain.com" });
+      const res = await post(app, "/api/auth/check-email", {
+        email: "user@error-domain.com",
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.method).toBe("credentials");
+      const body = await json(res);
+      expect(body.method).toBe("credentials");
     });
   });
 
@@ -531,15 +596,16 @@ describe("API routes", () => {
       };
       mockLoadSealedSession.mockReturnValueOnce(mockSession);
 
-      const res = await request(app)
-        .get("/api/auth/session")
-        .set("Cookie", "wos-session=valid_sealed_data");
+      const res = await app.request("/api/auth/session", {
+        headers: { Cookie: "wos-session=valid_sealed_data" },
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(true);
-      expect(res.body.user.id).toBe("user_01ABC");
-      expect(res.body.organizationId).toBe("org_01XYZ");
-      expect(res.body.role).toBe("admin");
+      const body = await json(res);
+      expect(body.authenticated).toBe(true);
+      expect(body.user.id).toBe("user_01ABC");
+      expect(body.organizationId).toBe("org_01XYZ");
+      expect(body.role).toBe("admin");
     });
 
     it("refreshes expired session and returns user data", async () => {
@@ -559,16 +625,19 @@ describe("API routes", () => {
       };
       mockLoadSealedSession.mockReturnValueOnce(mockSession);
 
-      const res = await request(app)
-        .get("/api/auth/session")
-        .set("Cookie", "wos-session=expired_sealed_data");
+      const res = await app.request("/api/auth/session", {
+        headers: { Cookie: "wos-session=expired_sealed_data" },
+      });
 
       expect(res.status).toBe(200);
-      expect(res.body.authenticated).toBe(true);
-      expect(res.body.user.email).toBe("test@example.com");
+      const body = await json(res);
+      expect(body.authenticated).toBe(true);
+      expect(body.user.email).toBe("test@example.com");
 
-      const setCookie = res.headers["set-cookie"];
-      expect(setCookie.some((c) => c.includes("refreshed_sealed"))).toBe(true);
+      const setCookies = res.headers.getSetCookie?.() ?? [];
+      expect(
+        setCookies.some((c: string) => c.includes("refreshed_sealed")),
+      ).toBe(true);
     });
   });
 
@@ -579,12 +648,16 @@ describe("API routes", () => {
         sealedSession: FAKE_SEALED_SESSION,
       });
 
-      const res = await request(app).get("/api/auth/callback?code=auth_code_123");
+      const res = await app.request(
+        "/api/auth/callback?code=auth_code_123",
+      );
 
       expect(res.status).toBe(302);
-      expect(res.headers.location).toBe("http://localhost:5176");
-      const setCookie = res.headers["set-cookie"];
-      expect(setCookie.some((c) => c.startsWith("wos-session="))).toBe(true);
+      expect(res.headers.get("location")).toBe("http://localhost:5176");
+      const setCookies = res.headers.getSetCookie?.() ?? [];
+      expect(
+        setCookies.some((c: string) => c.startsWith("wos-session=")),
+      ).toBe(true);
     });
   });
 });
