@@ -8,6 +8,7 @@
     "dev": "node --watch server.js & vite & wait"
   },
   "dependencies": {
+    "@radix-ui/themes": "^3.3.0",
     "@workos-inc/node": "^8.10.0",
     "cookie-parser": "^1.4.7",
     "csrf-csrf": "^4.0.3",

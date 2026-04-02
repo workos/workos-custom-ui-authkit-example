@@ -1,4 +1,20 @@
 import { useState, useEffect, useCallback, useRef, type FormEvent } from "react";
+import {
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Callout,
+  Card,
+  Code,
+  Flex,
+  Heading,
+  Separator,
+  Spinner,
+  Text,
+  TextField,
+} from "@radix-ui/themes";
+import "./app.css";
 
 // Capture URL params immediately (survives React StrictMode double-mount)
 const initialParams = new URLSearchParams(window.location.search);
@@ -110,7 +126,6 @@ async function api<T = unknown>(
     credentials: "include",
   });
 
-  // CSRF token may be rotated — refetch on 403 with "invalid csrf token"
   if (res.status === 403) {
     const clone = res.clone();
     try {
@@ -135,187 +150,6 @@ async function api<T = unknown>(
   const data = await res.json();
   return { status: res.status, data };
 }
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0f172a, #1e293b)",
-    color: "#e2e8f0",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: "40px 16px",
-  },
-  card: {
-    background: "#1e293b",
-    border: "1px solid #334155",
-    borderRadius: 12,
-    padding: 32,
-    width: "100%",
-    maxWidth: 420,
-    boxShadow: "0 8px 32px rgba(0,0,0,.4)",
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: 700,
-    marginBottom: 24,
-    textAlign: "center" as const,
-  },
-  label: {
-    display: "block",
-    fontSize: 13,
-    fontWeight: 500,
-    color: "#94a3b8",
-    marginBottom: 6,
-  },
-  input: {
-    width: "100%",
-    padding: "10px 12px",
-    background: "#0f172a",
-    border: "1px solid #334155",
-    borderRadius: 8,
-    color: "#e2e8f0",
-    fontSize: 14,
-    outline: "none",
-    marginBottom: 16,
-    boxSizing: "border-box" as const,
-  },
-  button: {
-    width: "100%",
-    padding: "12px 0",
-    border: "none",
-    borderRadius: 8,
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    marginBottom: 12,
-    transition: "opacity .15s",
-  },
-  primaryBtn: {
-    background: "#6366f1",
-    color: "#fff",
-  },
-  secondaryBtn: {
-    background: "transparent",
-    border: "1px solid #475569",
-    color: "#94a3b8",
-  },
-  dangerBtn: {
-    background: "#ef4444",
-    color: "#fff",
-  },
-  googleBtn: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    background: "#fff",
-    color: "#1f2937",
-    textDecoration: "none",
-    borderRadius: 8,
-    padding: "12px 0",
-    fontWeight: 600,
-    fontSize: 14,
-  },
-  orgCard: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "14px 16px",
-    background: "#0f172a",
-    border: "1px solid #334155",
-    borderRadius: 8,
-    marginBottom: 8,
-    cursor: "pointer",
-    transition: "border-color .15s",
-  },
-  userInfo: {
-    display: "flex",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 24,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: "50%",
-    background: "#6366f1",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 20,
-    fontWeight: 700,
-    color: "#fff",
-    flexShrink: 0,
-  },
-  badge: {
-    display: "inline-block",
-    padding: "4px 10px",
-    background: "#6366f1",
-    borderRadius: 20,
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#fff",
-    marginBottom: 16,
-  },
-  mono: {
-    padding: 16,
-    background: "#0f172a",
-    borderRadius: 8,
-    border: "1px solid #334155",
-    fontSize: 13,
-    fontFamily: "monospace",
-    marginBottom: 20,
-    wordBreak: "break-all" as const,
-  },
-  logPanel: {
-    width: "100%",
-    maxWidth: 420,
-    marginTop: 24,
-  },
-  logEntry: {
-    padding: "8px 12px",
-    background: "#0f172a",
-    border: "1px solid #334155",
-    borderRadius: 8,
-    marginBottom: 6,
-    fontSize: 12,
-    fontFamily: "monospace",
-    wordBreak: "break-all" as const,
-  },
-  error: {
-    color: "#fca5a5",
-    background: "#450a0a",
-    padding: "10px 14px",
-    borderRadius: 8,
-    fontSize: 13,
-    marginBottom: 16,
-  },
-  divider: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-    color: "#475569",
-    fontSize: 13,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    background: "#334155",
-  },
-  codeInput: {
-    letterSpacing: 6,
-    textAlign: "center" as const,
-    fontSize: 20,
-  },
-} satisfies Record<string, React.CSSProperties>;
 
 const MAX_LOG_ENTRIES = 20;
 
@@ -587,42 +421,51 @@ export default function App() {
 
   function renderError() {
     if (!error) return null;
-    return <div style={styles.error}>{error}</div>;
+    return (
+      <Callout.Root color="red" size="1" mb="4">
+        <Callout.Text>{error}</Callout.Text>
+      </Callout.Root>
+    );
   }
 
   function renderLogs() {
     if (logs.length === 0) return null;
     return (
-      <div style={styles.logPanel}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
-          API Log
-        </div>
-        {logs.map((l, i) => (
-          <div key={i} style={styles.logEntry}>
-            <span style={{ color: "#6366f1" }}>
-              {l.ts} {l.method}
-            </span>{" "}
-            <span style={{ color: "#94a3b8" }}>{l.url}</span>{" "}
-            <span style={{ color: l.status >= 400 ? "#fca5a5" : "#4ade80" }}>
-              {l.status}
-            </span>
-            <div style={{ color: "#64748b", marginTop: 4 }}>
-              {JSON.stringify(l.body).slice(0, 200)}
-            </div>
-          </div>
-        ))}
-      </div>
+      <Box className="log-panel">
+        <Text size="1" weight="medium" color="gray" mb="2" asChild>
+          <div>API Log</div>
+        </Text>
+        <Flex direction="column" gap="1">
+          {logs.map((l, i) => (
+            <Card key={i} size="1" className="log-entry">
+              <Text size="1" color="iris">{l.ts} {l.method}</Text>{" "}
+              <Text size="1" color="gray">{l.url}</Text>{" "}
+              <Text size="1" color={l.status >= 400 ? "red" : "green"}>
+                {l.status}
+              </Text>
+              <Text size="1" color="gray" asChild>
+                <div style={{ marginTop: 2 }}>
+                  {JSON.stringify(l.body).slice(0, 200)}
+                </div>
+              </Text>
+            </Card>
+          ))}
+        </Flex>
+      </Box>
     );
   }
 
   // ------ Loading ------
   if (view === "loading") {
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.heading}>Loading...</div>
-        </div>
-      </div>
+      <Flex className="page" align="center" justify="center">
+        <Card size="3" className="auth-card">
+          <Flex align="center" justify="center" gap="3" py="6">
+            <Spinner size="3" />
+            <Heading size="4">Loading...</Heading>
+          </Flex>
+        </Card>
+      </Flex>
     );
   }
 
@@ -631,80 +474,84 @@ export default function App() {
     const isEmailStep = loginStep === "email";
 
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.heading}>Sign In</div>
+      <div className="page">
+        <Card size="3" className="auth-card">
+          <Heading size="5" align="center" mb="5">Sign In</Heading>
           {renderError()}
 
-          {/* Email field is always visible */}
           <form onSubmit={isEmailStep ? checkEmail : loginWithPassword}>
-            <label style={styles.label} htmlFor="login-email">Email</label>
-            <input
-              id="login-email"
-              style={styles.input}
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (!isEmailStep) {
-                  setLoginStep("email");
-                  setPassword("");
-                  setError("");
-                }
-              }}
-              placeholder="you@company.com"
-            />
-
-            {isEmailStep ? (
-              <button
-                type="submit"
-                style={{ ...styles.button, ...styles.primaryBtn }}
-                disabled={loading || !email}
-              >
-                {loading ? "Checking..." : "Continue"}
-              </button>
-            ) : (
-              <>
-                <label style={styles.label} htmlFor="login-password">Password</label>
-                <input
-                  id="login-password"
-                  style={styles.input}
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoFocus
+            <Flex direction="column" gap="3">
+              <Box>
+                <Text as="label" size="2" weight="medium" color="gray" htmlFor="login-email">
+                  Email
+                </Text>
+                <TextField.Root
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (!isEmailStep) {
+                      setLoginStep("email");
+                      setPassword("");
+                      setError("");
+                    }
+                  }}
+                  placeholder="you@company.com"
+                  size="3"
+                  mt="1"
                 />
+              </Box>
 
-                <button
-                  type="submit"
-                  style={{ ...styles.button, ...styles.primaryBtn }}
-                  disabled={loading}
-                >
-                  {loading ? "Signing in..." : "Sign in with Password"}
-                </button>
+              {isEmailStep ? (
+                <Button type="submit" size="3" disabled={loading || !email}>
+                  {loading ? <Spinner size="2" /> : "Continue"}
+                </Button>
+              ) : (
+                <>
+                  <Box>
+                    <Text as="label" size="2" weight="medium" color="gray" htmlFor="login-password">
+                      Password
+                    </Text>
+                    <TextField.Root
+                      id="login-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      size="3"
+                      mt="1"
+                      autoFocus
+                    />
+                  </Box>
 
-                <button
-                  type="button"
-                  style={{ ...styles.button, ...styles.secondaryBtn }}
-                  disabled={loading}
-                  onClick={() => sendMagicCode()}
-                >
-                  {loading ? "Sending..." : "Send Magic Code Instead"}
-                </button>
-              </>
-            )}
+                  <Button type="submit" size="3" disabled={loading}>
+                    {loading ? <Spinner size="2" /> : "Sign in with Password"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="3"
+                    disabled={loading}
+                    onClick={() => sendMagicCode()}
+                  >
+                    {loading ? <Spinner size="2" /> : "Send Magic Code Instead"}
+                  </Button>
+                </>
+              )}
+            </Flex>
           </form>
 
-          <div style={styles.divider}>
-            <div style={styles.dividerLine} />
-            <span>or</span>
-            <div style={styles.dividerLine} />
-          </div>
+          <Flex align="center" gap="3" my="4">
+            <Separator size="4" />
+            <Text size="2" color="gray">or</Text>
+            <Separator size="4" />
+          </Flex>
 
-          <a href="/api/auth/google" style={{ ...styles.button, ...styles.googleBtn }}>
+          <a href="/api/auth/google" className="google-btn">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -713,7 +560,7 @@ export default function App() {
             </svg>
             Sign in with Google
           </a>
-        </div>
+        </Card>
         {renderLogs()}
       </div>
     );
@@ -722,40 +569,48 @@ export default function App() {
   // ------ Magic Code Verification ------
   if (view === "magic-code") {
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.heading}>Enter Code</div>
-          <p style={{ color: "#94a3b8", fontSize: 14, marginBottom: 16 }}>
-            We sent a 6-digit code to{" "}
-            <strong style={{ color: "#e2e8f0" }}>{email}</strong>
-          </p>
+      <div className="page">
+        <Card size="3" className="auth-card">
+          <Heading size="5" align="center" mb="2">Enter Code</Heading>
+          <Text size="2" color="gray" align="center" mb="4" asChild>
+            <p>
+              We sent a 6-digit code to{" "}
+              <Text weight="bold" color="gray" highContrast>{email}</Text>
+            </p>
+          </Text>
           {renderError()}
 
           <form onSubmit={verifyMagicCode}>
-            <label style={styles.label} htmlFor="magic-code">Code</label>
-            <input
-              id="magic-code"
-              style={{ ...styles.input, ...styles.codeInput }}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={magicCode}
-              onChange={(e) => setMagicCode(e.target.value)}
-              placeholder="000000"
-              maxLength={6}
-            />
+            <Flex direction="column" gap="3">
+              <Box>
+                <Text as="label" size="2" weight="medium" color="gray" htmlFor="magic-code">
+                  Code
+                </Text>
+                <TextField.Root
+                  id="magic-code"
+                  className="code-input"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={magicCode}
+                  onChange={(e) => setMagicCode(e.target.value)}
+                  placeholder="000000"
+                  maxLength={6}
+                  size="3"
+                  mt="1"
+                />
+              </Box>
 
-            <button
-              type="submit"
-              style={{ ...styles.button, ...styles.primaryBtn }}
-              disabled={loading}
-            >
-              {loading ? "Verifying..." : "Verify Code"}
-            </button>
+              <Button type="submit" size="3" disabled={loading}>
+                {loading ? <Spinner size="2" /> : "Verify Code"}
+              </Button>
+            </Flex>
           </form>
 
-          <button
-            type="button"
-            style={{ ...styles.button, ...styles.secondaryBtn }}
+          <Button
+            variant="outline"
+            size="3"
+            mt="3"
+            style={{ width: "100%" }}
             onClick={() => {
               setError("");
               setLoginStep("email");
@@ -763,8 +618,8 @@ export default function App() {
             }}
           >
             Back to Login
-          </button>
-        </div>
+          </Button>
+        </Card>
         {renderLogs()}
       </div>
     );
@@ -773,45 +628,46 @@ export default function App() {
   // ------ Org Picker ------
   if (view === "org-picker") {
     return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <div style={styles.heading}>Select Organization</div>
-          <p style={{ color: "#94a3b8", fontSize: 14, marginBottom: 20 }}>
-            Your account belongs to multiple organizations. Choose one to
-            continue.
-          </p>
+      <div className="page">
+        <Card size="3" className="auth-card">
+          <Heading size="5" align="center" mb="2">Select Organization</Heading>
+          <Text size="2" color="gray" align="center" mb="4" asChild>
+            <p>Your account belongs to multiple organizations. Choose one to continue.</p>
+          </Text>
           {renderError()}
 
-          {orgChoices.map((oc) => (
-            <div
-              key={oc.id}
-              role="button"
-              tabIndex={0}
-              style={styles.orgCard}
-              onClick={() => !loading && selectOrg(oc.id)}
-              onKeyDown={(e) => e.key === "Enter" && !loading && selectOrg(oc.id)}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.borderColor = "#6366f1")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.borderColor = "#334155")
-              }
-            >
-              <div>
-                <div style={{ fontWeight: 600, marginBottom: 2 }}>
-                  {oc.name}
+          <Flex direction="column" gap="2">
+            {orgChoices.map((oc) => (
+              <Card
+                key={oc.id}
+                size="2"
+                className="org-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => !loading && selectOrg(oc.id)}
+                onKeyDown={(e) => e.key === "Enter" && !loading && selectOrg(oc.id)}
+                asChild
+              >
+                <div>
+                  <Flex justify="between" align="center">
+                    <Box>
+                      <Text size="2" weight="bold">{oc.name}</Text>
+                      <Text size="1" color="gray" asChild>
+                        <div>{oc.id}</div>
+                      </Text>
+                    </Box>
+                    <Text size="4" color="iris" aria-hidden="true">→</Text>
+                  </Flex>
                 </div>
-                <div style={{ fontSize: 12, color: "#64748b" }}>
-                  {oc.id}
-                </div>
-              </div>
-              <span style={{ color: "#6366f1", fontSize: 20 }} aria-hidden="true">→</span>
-            </div>
-          ))}
+              </Card>
+            ))}
+          </Flex>
 
-          <button
-            type="button"
-            style={{ ...styles.button, ...styles.secondaryBtn, marginTop: 12 }}
+          <Button
+            variant="outline"
+            size="3"
+            mt="4"
+            style={{ width: "100%" }}
             onClick={() => {
               setError("");
               setLoginStep("email");
@@ -819,8 +675,8 @@ export default function App() {
             }}
           >
             Back to Login
-          </button>
-        </div>
+          </Button>
+        </Card>
         {renderLogs()}
       </div>
     );
@@ -828,55 +684,42 @@ export default function App() {
 
   // ------ Dashboard ------
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <div style={styles.heading}>Dashboard</div>
+    <div className="page">
+      <Card size="3" className="auth-card">
+        <Heading size="5" align="center" mb="5">Dashboard</Heading>
 
         {user && (
-          <div style={styles.userInfo}>
-            {user.profilePictureUrl ? (
-              <img
-                src={user.profilePictureUrl}
-                alt={`${user.firstName ?? user.email} avatar`}
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                }}
-              />
-            ) : (
-              <div style={styles.avatar}>
-                {(user.firstName?.[0] || user.email[0]).toUpperCase()}
-              </div>
-            )}
-            <div>
-              <div style={{ fontWeight: 600 }}>
-                {[user.firstName, user.lastName].filter(Boolean).join(" ") ||
-                  user.email}
-              </div>
-              <div style={{ fontSize: 13, color: "#64748b" }}>
-                {user.email}
-              </div>
-            </div>
-          </div>
+          <Flex align="center" gap="4" mb="5">
+            <Avatar
+              size="4"
+              src={user.profilePictureUrl ?? undefined}
+              fallback={(user.firstName?.[0] || user.email[0]).toUpperCase()}
+              radius="full"
+            />
+            <Box>
+              <Text size="3" weight="bold">
+                {[user.firstName, user.lastName].filter(Boolean).join(" ") || user.email}
+              </Text>
+              <Text size="2" color="gray" asChild>
+                <div>{user.email}</div>
+              </Text>
+            </Box>
+          </Flex>
         )}
 
-        {orgId && <div style={styles.badge}>Org: {orgId}</div>}
+        {orgId && (
+          <Badge color="iris" size="2" mb="4">Org: {orgId}</Badge>
+        )}
 
-        <div style={styles.mono}>
-          <div style={{ color: "#64748b", marginBottom: 4 }}>User ID</div>
-          <div>{user?.id}</div>
-        </div>
+        <Card size="2" mb="4">
+          <Text size="1" color="gray">User ID</Text>
+          <Code size="2" variant="ghost">{user?.id}</Code>
+        </Card>
 
-        <button
-          type="button"
-          style={{ ...styles.button, ...styles.dangerBtn }}
-          onClick={logout}
-        >
+        <Button color="red" size="3" style={{ width: "100%" }} onClick={logout}>
           Sign Out
-        </button>
-      </div>
+        </Button>
+      </Card>
       {renderLogs()}
     </div>
   );

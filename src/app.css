@@ -1,0 +1,70 @@
+html, body, #root {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background: var(--color-background);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.log-panel {
+  width: 100%;
+  max-width: 420px;
+  margin-top: var(--space-5);
+}
+
+.log-entry {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  word-break: break-all;
+}
+
+.code-input input {
+  letter-spacing: 6px;
+  text-align: center;
+  font-size: var(--font-size-5);
+}
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  background: white;
+  color: #1f2937;
+  text-decoration: none;
+  border-radius: var(--radius-2);
+  font-weight: 600;
+  font-size: var(--font-size-2);
+  box-sizing: border-box;
+}
+
+.google-btn:hover {
+  background: #f3f4f6;
+}
+
+.org-card {
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.org-card:hover, .org-card:focus-visible {
+  border-color: var(--accent-9);
+  background-color: var(--color-surface);
+}
