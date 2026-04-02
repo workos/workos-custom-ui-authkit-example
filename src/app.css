@@ -1,4 +1,6 @@
-html, body, #root {
+html,
+body,
+#root {
   min-height: 100vh;
 }
 
@@ -66,10 +68,13 @@ body {
 
 .org-card {
   cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
 }
 
-.org-card:hover, .org-card:focus-visible {
+.org-card:hover,
+.org-card:focus-visible {
   border-color: var(--accent-9);
   background-color: var(--color-surface);
 }

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef, type FormEvent } from "react";
-import { api, clearCsrfCache } from "../api";
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
+import { api, clearCsrfCache } from '../api';
 import type {
   AuthResponse,
   CheckEmailResponse,
@@ -12,8 +12,8 @@ import type {
   SsoRequiredResponse,
   User,
   View,
-} from "../types";
-import { isOrgRequired, isSsoRequired } from "../types";
+} from '../types';
+import { isOrgRequired, isSsoRequired } from '../types';
 
 const MAX_LOG_ENTRIES = 20;
 
@@ -21,38 +21,31 @@ const MAX_LOG_ENTRIES = 20;
 const initialParams = new URLSearchParams(window.location.search);
 
 export function useAuth() {
-  const [view, setView] = useState<View>("loading");
-  const [loginStep, setLoginStep] = useState<LoginStep>("email");
+  const [view, setView] = useState<View>('loading');
+  const [loginStep, setLoginStep] = useState<LoginStep>('email');
   const [user, setUser] = useState<User | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [magicCode, setMagicCode] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [magicCode, setMagicCode] = useState('');
 
   const [orgChoices, setOrgChoices] = useState<OrgChoice[]>([]);
-  const [pendingToken, setPendingToken] = useState("");
+  const [pendingToken, setPendingToken] = useState('');
 
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState<string | false>(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
-  const addLog = useCallback(
-    (method: string, url: string, status: number, body: unknown) => {
-      setLogs((prev) => [
-        { ts: new Date().toLocaleTimeString(), method, url, status, body },
-        ...prev.slice(0, MAX_LOG_ENTRIES - 1),
-      ]);
-    },
-    [],
-  );
+  const addLog = useCallback((method: string, url: string, status: number, body: unknown) => {
+    setLogs((prev) => [
+      { ts: new Date().toLocaleTimeString(), method, url, status, body },
+      ...prev.slice(0, MAX_LOG_ENTRIES - 1),
+    ]);
+  }, []);
 
   const callApi = useCallback(
-    async <T = unknown>(
-      method: string,
-      path: string,
-      body?: unknown,
-    ): Promise<{ status: number; data: T }> => {
+    async <T = unknown>(method: string, path: string, body?: unknown): Promise<{ status: number; data: T }> => {
       const result = await api<T>(method, path, body);
       addLog(method, path, result.status, result.data);
       return result;
@@ -65,25 +58,25 @@ export function useAuth() {
   function handleOrgRequired(data: OrgRequiredResponse) {
     setPendingToken(data.pendingAuthenticationToken);
     setOrgChoices(data.organizations);
-    setError("");
-    setView("org-picker");
+    setError('');
+    setView('org-picker');
   }
 
   function handleSsoRequired(data: SsoRequiredResponse) {
     if (data.connectionIds.length > 0) {
       window.location.href = `/api/auth/sso?connection_id=${encodeURIComponent(data.connectionIds[0])}`;
     } else {
-      setError("SSO is required for this domain but no connection was found.");
+      setError('SSO is required for this domain but no connection was found.');
     }
   }
 
   function handleAuthSuccess(data: AuthResponse) {
     setUser(data.user);
     setOrgId(data.organizationId ?? null);
-    setPendingToken("");
+    setPendingToken('');
     setOrgChoices([]);
-    setError("");
-    setView("dashboard");
+    setError('');
+    setView('dashboard');
   }
 
   // ------ Init: check URL params then session ------
@@ -94,44 +87,41 @@ export function useAuth() {
     didInit.current = true;
 
     if (initialParams.toString()) {
-      window.history.replaceState({}, "", "/");
+      window.history.replaceState({}, '', '/');
     }
 
-    if (initialParams.has("error")) {
-      setError(initialParams.get("error")!);
-      setView("login");
+    if (initialParams.has('error')) {
+      setError(initialParams.get('error')!);
+      setView('login');
       return;
     }
 
-    if (initialParams.get("org_selection") === "true") {
-      const token = initialParams.get("token") || "";
+    if (initialParams.get('org_selection') === 'true') {
+      const token = initialParams.get('token') || '';
       let orgs: OrgChoice[] = [];
       try {
-        orgs = JSON.parse(initialParams.get("orgs") || "[]");
+        orgs = JSON.parse(initialParams.get('orgs') || '[]');
       } catch {
         /* malformed — show empty picker */
       }
       setPendingToken(token);
       setOrgChoices(orgs);
-      setView("org-picker");
+      setView('org-picker');
       return;
     }
 
     (async () => {
       try {
-        const { status, data } = await callApi<SessionResponse>(
-          "GET",
-          "/api/auth/session",
-        );
+        const { status, data } = await callApi<SessionResponse>('GET', '/api/auth/session');
         if (status === 200 && data.authenticated && data.user) {
           setUser(data.user);
           setOrgId(data.organizationId ?? null);
-          setView("dashboard");
+          setView('dashboard');
         } else {
-          setView("login");
+          setView('login');
         }
       } catch {
-        setView("login");
+        setView('login');
       }
     })();
   }, [callApi]);
@@ -141,44 +131,40 @@ export function useAuth() {
   // Changing the email field resets to the email step
   function onEmailChange(value: string) {
     setEmail(value);
-    if (loginStep !== "email") {
-      setLoginStep("email");
-      setPassword("");
-      setError("");
+    if (loginStep !== 'email') {
+      setLoginStep('email');
+      setPassword('');
+      setError('');
     }
   }
 
   function goToLogin() {
-    setError("");
-    setLoginStep("email");
-    setView("login");
+    setError('');
+    setLoginStep('email');
+    setView('login');
   }
 
   async function checkEmail(e: FormEvent) {
     e.preventDefault();
-    setError("");
-    setLoading("check-email");
+    setError('');
+    setLoading('check-email');
     try {
-      const { status, data } = await callApi<CheckEmailResponse>(
-        "POST",
-        "/api/auth/check-email",
-        { email },
-      );
+      const { status, data } = await callApi<CheckEmailResponse>('POST', '/api/auth/check-email', { email });
 
       if (status >= 400) {
-        setLoginStep("credentials");
+        setLoginStep('credentials');
         return;
       }
 
-      if (data.method === "sso" && data.ssoUrl) {
+      if (data.method === 'sso' && data.ssoUrl) {
         window.location.href = data.ssoUrl;
         return;
       }
 
-      setLoginStep("credentials");
+      setLoginStep('credentials');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Network error");
-      setLoginStep("credentials");
+      setError(err instanceof Error ? err.message : 'Network error');
+      setLoginStep('credentials');
     } finally {
       setLoading(false);
     }
@@ -186,19 +172,21 @@ export function useAuth() {
 
   async function loginWithPassword(e: FormEvent) {
     e.preventDefault();
-    setError("");
-    setLoading("password");
+    setError('');
+    setLoading('password');
     try {
-      const { status, data } = await callApi<
-        AuthResponse | OrgRequiredResponse | SsoRequiredResponse | ErrorResponse
-      >("POST", "/api/auth/password", { email, password });
+      const { status, data } = await callApi<AuthResponse | OrgRequiredResponse | SsoRequiredResponse | ErrorResponse>(
+        'POST',
+        '/api/auth/password',
+        { email, password },
+      );
 
       if (isOrgRequired(data)) return handleOrgRequired(data);
       if (isSsoRequired(data)) return handleSsoRequired(data);
-      if (status >= 400) return setError((data as ErrorResponse).error || "Authentication failed");
+      if (status >= 400) return setError((data as ErrorResponse).error || 'Authentication failed');
       handleAuthSuccess(data as AuthResponse);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
     }
@@ -206,20 +194,18 @@ export function useAuth() {
 
   async function sendMagicCode(e?: FormEvent) {
     e?.preventDefault();
-    setError("");
-    setLoading("magic-send");
+    setError('');
+    setLoading('magic-send');
     try {
-      const { status, data } = await callApi<{ status: string } | ErrorResponse>(
-        "POST",
-        "/api/auth/magic-auth/send",
-        { email },
-      );
+      const { status, data } = await callApi<{ status: string } | ErrorResponse>('POST', '/api/auth/magic-auth/send', {
+        email,
+      });
       if (status >= 400) {
-        return setError((data as ErrorResponse).error || "Failed to send code");
+        return setError((data as ErrorResponse).error || 'Failed to send code');
       }
-      setView("magic-code");
+      setView('magic-code');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
     }
@@ -227,43 +213,41 @@ export function useAuth() {
 
   async function verifyMagicCode(e: FormEvent) {
     e.preventDefault();
-    setError("");
-    setLoading("magic-verify");
+    setError('');
+    setLoading('magic-verify');
     try {
-      const { status, data } = await callApi<
-        AuthResponse | OrgRequiredResponse | SsoRequiredResponse | ErrorResponse
-      >("POST", "/api/auth/magic-auth/verify", { email, code: magicCode });
+      const { status, data } = await callApi<AuthResponse | OrgRequiredResponse | SsoRequiredResponse | ErrorResponse>(
+        'POST',
+        '/api/auth/magic-auth/verify',
+        { email, code: magicCode },
+      );
 
       if (isOrgRequired(data)) return handleOrgRequired(data);
       if (isSsoRequired(data)) return handleSsoRequired(data);
-      if (status >= 400) return setError((data as ErrorResponse).error || "Verification failed");
+      if (status >= 400) return setError((data as ErrorResponse).error || 'Verification failed');
       handleAuthSuccess(data as AuthResponse);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
     }
   }
 
   async function selectOrg(selectedOrgId: string) {
-    setError("");
-    setLoading("org-select");
+    setError('');
+    setLoading('org-select');
     try {
-      const { status, data } = await callApi<AuthResponse | ErrorResponse>(
-        "POST",
-        "/api/auth/org-selection",
-        {
-          pendingAuthenticationToken: pendingToken,
-          organizationId: selectedOrgId,
-        },
-      );
+      const { status, data } = await callApi<AuthResponse | ErrorResponse>('POST', '/api/auth/org-selection', {
+        pendingAuthenticationToken: pendingToken,
+        organizationId: selectedOrgId,
+      });
 
       if (status >= 400) {
-        return setError((data as ErrorResponse).error || "Org selection failed");
+        return setError((data as ErrorResponse).error || 'Org selection failed');
       }
       handleAuthSuccess(data as AuthResponse);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
     }
@@ -274,17 +258,14 @@ export function useAuth() {
       clearCsrfCache();
       setUser(null);
       setOrgId(null);
-      setPendingToken("");
+      setPendingToken('');
       setOrgChoices([]);
-      setLoginStep("email");
-      setView("login");
+      setLoginStep('email');
+      setView('login');
     }
 
     try {
-      const { data } = await callApi<{ status: string; logOutUrl?: string }>(
-        "POST",
-        "/api/auth/logout",
-      );
+      const { data } = await callApi<{ status: string; logOutUrl?: string }>('POST', '/api/auth/logout');
       reset();
       if (data?.logOutUrl) {
         window.location.href = data.logOutUrl;

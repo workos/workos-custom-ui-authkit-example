@@ -3,17 +3,15 @@ let csrfToken: string | null = null;
 async function fetchCsrfToken(): Promise<string> {
   if (csrfToken) return csrfToken;
   try {
-    const res = await fetch("/api/auth/csrf-token", { credentials: "include" });
+    const res = await fetch('/api/auth/csrf-token', { credentials: 'include' });
     if (!res.ok) throw new Error(`CSRF token request failed: ${res.status}`);
     const data = await res.json();
-    if (!data.csrfToken) throw new Error("No csrfToken in response");
+    if (!data.csrfToken) throw new Error('No csrfToken in response');
     csrfToken = data.csrfToken as string;
     return csrfToken;
   } catch (err) {
     csrfToken = null;
-    throw new Error(
-      `Failed to fetch CSRF token: ${err instanceof Error ? err.message : "unknown error"}`,
-    );
+    throw new Error(`Failed to fetch CSRF token: ${err instanceof Error ? err.message : 'unknown error'}`);
   }
 }
 
@@ -31,31 +29,31 @@ export async function api<T = unknown>(
   body?: unknown,
 ): Promise<{ status: number; data: T }> {
   const headers: Record<string, string> = {};
-  if (body) headers["Content-Type"] = "application/json";
+  if (body) headers['Content-Type'] = 'application/json';
 
-  if (method !== "GET") {
-    headers["x-csrf-token"] = await fetchCsrfToken();
+  if (method !== 'GET') {
+    headers['x-csrf-token'] = await fetchCsrfToken();
   }
 
   const res = await fetch(path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
+    credentials: 'include',
   });
 
   if (res.status === 403) {
     const clone = res.clone();
     try {
       const errBody = await clone.json();
-      if (typeof errBody?.error === "string" && errBody.error.toLowerCase().includes("csrf")) {
+      if (typeof errBody?.error === 'string' && errBody.error.toLowerCase().includes('csrf')) {
         csrfToken = null;
-        headers["x-csrf-token"] = await fetchCsrfToken();
+        headers['x-csrf-token'] = await fetchCsrfToken();
         const retry = await fetch(path, {
           method,
           headers,
           body: body ? JSON.stringify(body) : undefined,
-          credentials: "include",
+          credentials: 'include',
         });
         const retryText = await retry.text();
         return { status: retry.status, data: parseJsonResponse<T>(retryText, retry.status) };

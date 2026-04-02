@@ -1,4 +1,4 @@
-import { Callout } from "@radix-ui/themes";
+import { Callout } from '@radix-ui/themes';
 
 export function ErrorCallout({ message }: { message: string }) {
   return (

@@ -1,17 +1,8 @@
-import { type FormEvent } from "react";
-import {
-  Box,
-  Button,
-  Card,
-  Flex,
-  Heading,
-  Spinner,
-  Text,
-  TextField,
-} from "@radix-ui/themes";
-import type { LogEntry } from "../types";
-import { ErrorCallout } from "../components/ErrorCallout";
-import { LogPanel } from "../components/LogPanel";
+import { type FormEvent } from 'react';
+import { Box, Button, Card, Flex, Heading, Spinner, Text, TextField } from '@radix-ui/themes';
+import type { LogEntry } from '../types';
+import { ErrorCallout } from '../components/ErrorCallout';
+import { LogPanel } from '../components/LogPanel';
 
 interface Props {
   email: string;
@@ -24,18 +15,19 @@ interface Props {
   onBack: () => void;
 }
 
-export function MagicCodeView({
-  email, magicCode, loading, error, logs,
-  onMagicCodeChange, onVerify, onBack,
-}: Props) {
+export function MagicCodeView({ email, magicCode, loading, error, logs, onMagicCodeChange, onVerify, onBack }: Props) {
   return (
     <div className="page">
       <Card size="3" className="auth-card">
-        <Heading size="5" align="center" mb="2">Enter Code</Heading>
+        <Heading size="5" align="center" mb="2">
+          Enter Code
+        </Heading>
         <Text size="2" color="gray" align="center" mb="4" asChild>
           <p>
-            We sent a 6-digit code to{" "}
-            <Text weight="bold" color="gray" highContrast>{email}</Text>
+            We sent a 6-digit code to{' '}
+            <Text weight="bold" color="gray" highContrast>
+              {email}
+            </Text>
           </p>
         </Text>
         {error && <ErrorCallout message={error} />}
@@ -61,18 +53,12 @@ export function MagicCodeView({
             </Box>
 
             <Button type="submit" size="3" disabled={!!loading}>
-              {loading === "magic-verify" ? <Spinner size="2" /> : "Verify Code"}
+              {loading === 'magic-verify' ? <Spinner size="2" /> : 'Verify Code'}
             </Button>
           </Flex>
         </form>
 
-        <Button
-          variant="outline"
-          size="3"
-          mt="3"
-          className="full-width"
-          onClick={onBack}
-        >
+        <Button variant="outline" size="3" mt="3" className="full-width" onClick={onBack}>
           Back to Login
         </Button>
       </Card>

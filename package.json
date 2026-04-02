@@ -2,30 +2,44 @@
   "name": "workos-custom-auth-example",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.27.0",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "dev:server": "node --watch server.js",
+    "dev:server": "tsx watch server.ts",
     "dev:client": "vite",
-    "dev": "node --watch server.js & vite & wait",
+    "dev": "tsx watch server.ts & vite & wait",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.server.json",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.12",
     "@radix-ui/themes": "^3.3.0",
     "@workos-inc/node": "^8.10.0",
-    "cookie-parser": "^1.4.7",
-    "csrf-csrf": "^4.0.3",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "dotenv": "^17.4.0",
+    "hono": "^4.12.10",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "supertest": "^7.2.2",
-    "typescript": "^5.5.3",
-    "vite": "^6.0.0",
+    "@rolldown/plugin-babel": "^0.2.2",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "oxfmt": "^0.43.0",
+    "oxlint": "^1.58.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3",
     "vitest": "^4.1.2"
   }
 }
