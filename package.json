@@ -2,6 +2,7 @@
   "name": "workos-custom-auth-example",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.27.0",
   "engines": {
     "node": ">=22"
   },

@@ -69,17 +69,17 @@ Open [http://localhost:5176](http://localhost:5176).
 
 ## Scripts
 
-| Script | Description |
-|---|---|
-| `pnpm dev` | Start backend + frontend concurrently |
-| `pnpm dev:server` | Start Hono backend with tsx watch |
-| `pnpm dev:client` | Start Vite dev server |
-| `pnpm build` | Production build (frontend) |
-| `pnpm check` | Run typecheck + lint + format check + tests |
-| `pnpm typecheck` | Type-check frontend and server |
-| `pnpm test` | Run tests |
-| `pnpm lint` | Lint with oxlint |
-| `pnpm format` | Format with oxfmt |
+| Script            | Description                                 |
+| ----------------- | ------------------------------------------- |
+| `pnpm dev`        | Start backend + frontend concurrently       |
+| `pnpm dev:server` | Start Hono backend with tsx watch           |
+| `pnpm dev:client` | Start Vite dev server                       |
+| `pnpm build`      | Production build (frontend)                 |
+| `pnpm check`      | Run typecheck + lint + format check + tests |
+| `pnpm typecheck`  | Type-check frontend and server              |
+| `pnpm test`       | Run tests                                   |
+| `pnpm lint`       | Lint with oxlint                            |
+| `pnpm format`     | Format with oxfmt                           |
 
 ## How it works
 
