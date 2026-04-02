@@ -34,7 +34,8 @@ const workos = new WorkOS(process.env.WORKOS_API_KEY, {
 
 const PORT = process.env.PORT || 3001;
 const IS_PROD = process.env.NODE_ENV === "production";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5176";
+const FRONTEND_PORT = process.env.FRONTEND_PORT || "5176";
+const FRONTEND_URL = process.env.FRONTEND_URL || `http://localhost:${FRONTEND_PORT}`;
 const COOKIE_PASSWORD = process.env.WORKOS_COOKIE_PASSWORD;
 const SESSION_COOKIE = "wos-session";
 const COOKIE_OPTIONS = {

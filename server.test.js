@@ -6,6 +6,7 @@ process.env.NODE_ENV = "test";
 process.env.WORKOS_API_KEY = "sk_test_fake";
 process.env.WORKOS_CLIENT_ID = "client_fake";
 process.env.WORKOS_COOKIE_PASSWORD = "a]Ek+5S;2/gm,Ry3(cKsia^Gzxpj|O>b";
+process.env.FRONTEND_URL = "http://localhost:5176";
 
 // ---------------------------------------------------------------------------
 // Mock WorkOS SDK — intercept authenticateWithPassword, etc.
