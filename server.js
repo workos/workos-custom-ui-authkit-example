@@ -224,9 +224,7 @@ app.post("/api/auth/check-email", async (req, res) => {
     if (active.length > 0) {
       return res.json({
         method: "sso",
-        connectionId: active[0].id,
-        connectionType: active[0].connectionType,
-        organizationId: active[0].organizationId,
+        ssoUrl: `/api/auth/sso?connection_id=${encodeURIComponent(active[0].id)}`,
       });
     }
 
@@ -492,9 +490,9 @@ app.post(
         .json({ status: "error", error: "Refresh failed" });
     } catch (err) {
       console.error("Switch org error:", err.message);
-      return res.status(500).json({
+      return res.status(err.status || 500).json({
         status: "error",
-        error: err.message,
+        error: err.errorDescription || err.message,
       });
     }
   },
@@ -527,8 +525,17 @@ app.post("/api/auth/logout", doubleCsrfProtection, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Start
+// Start (skip when imported for testing)
 // ---------------------------------------------------------------------------
-app.listen(PORT, () => {
-  console.log(`API server running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`API server running on http://localhost:${PORT}`);
+  });
+}
+
+export {
+  app,
+  isOrgSelectionRequired,
+  isSsoRequired,
+  requireBody,
+};

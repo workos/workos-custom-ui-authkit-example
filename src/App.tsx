@@ -14,141 +14,26 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
+import { api, clearCsrfCache } from "./api";
+import type {
+  AuthResponse,
+  CheckEmailResponse,
+  ErrorResponse,
+  LogEntry,
+  LoginStep,
+  OrgChoice,
+  OrgRequiredResponse,
+  SessionResponse,
+  SsoRequiredResponse,
+  User,
+  View,
+} from "./types";
 import "./app.css";
 
 // Capture URL params immediately (survives React StrictMode double-mount)
 const initialParams = new URLSearchParams(window.location.search);
 if (initialParams.toString()) {
   window.history.replaceState({}, "", "/");
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-  profilePictureUrl: string | null;
-}
-
-interface OrgChoice {
-  id: string;
-  name: string;
-}
-
-interface AuthResponse {
-  status: string;
-  user: User;
-  organizationId?: string;
-}
-
-interface OrgRequiredResponse {
-  status: "org_selection_required";
-  pendingAuthenticationToken: string;
-  organizations: OrgChoice[];
-}
-
-interface SsoRequiredResponse {
-  status: "sso_required";
-  connectionIds: string[];
-  email?: string;
-}
-
-interface CheckEmailResponse {
-  method: "sso" | "credentials";
-  connectionId?: string;
-  connectionType?: string;
-  organizationId?: string;
-}
-
-interface SessionResponse {
-  authenticated: boolean;
-  user?: User;
-  organizationId?: string;
-  reason?: string;
-}
-
-interface ErrorResponse {
-  status: "error";
-  error: string;
-}
-
-type View =
-  | "loading"
-  | "login"
-  | "magic-code"
-  | "org-picker"
-  | "dashboard";
-
-type LoginStep = "email" | "credentials";
-
-interface LogEntry {
-  ts: string;
-  method: string;
-  url: string;
-  status: number;
-  body: unknown;
-}
-
-// ---------------------------------------------------------------------------
-// API helper
-// ---------------------------------------------------------------------------
-
-let csrfToken: string | null = null;
-
-async function fetchCsrfToken(): Promise<string> {
-  if (csrfToken) return csrfToken;
-  const res = await fetch("/api/auth/csrf-token", { credentials: "include" });
-  const data = await res.json();
-  csrfToken = data.csrfToken;
-  return csrfToken!;
-}
-
-async function api<T = unknown>(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<{ status: number; data: T }> {
-  const headers: Record<string, string> = {};
-  if (body) headers["Content-Type"] = "application/json";
-
-  if (method !== "GET") {
-    headers["x-csrf-token"] = await fetchCsrfToken();
-  }
-
-  const res = await fetch(path, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
-  });
-
-  if (res.status === 403) {
-    const clone = res.clone();
-    try {
-      const errBody = await clone.json();
-      if (typeof errBody?.error === "string" && errBody.error.toLowerCase().includes("csrf")) {
-        csrfToken = null;
-        headers["x-csrf-token"] = await fetchCsrfToken();
-        const retry = await fetch(path, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-          credentials: "include",
-        });
-        const retryData = await retry.json();
-        return { status: retry.status, data: retryData };
-      }
-    } catch {
-      // not JSON — fall through
-    }
-  }
-
-  const data = await res.json();
-  return { status: res.status, data };
 }
 
 const MAX_LOG_ENTRIES = 20;
@@ -171,7 +56,7 @@ export default function App() {
   const [pendingToken, setPendingToken] = useState("");
 
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<string | false>(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const addLog = useCallback(
@@ -273,7 +158,7 @@ export default function App() {
   async function checkEmail(e: FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setLoading("check-email");
     try {
       const { status, data } = await callApi<CheckEmailResponse>(
         "POST",
@@ -286,8 +171,8 @@ export default function App() {
         return;
       }
 
-      if (data.method === "sso" && data.connectionId) {
-        window.location.href = `/api/auth/sso?connection_id=${encodeURIComponent(data.connectionId)}`;
+      if (data.method === "sso" && data.ssoUrl) {
+        window.location.href = data.ssoUrl;
         return;
       }
 
@@ -304,7 +189,7 @@ export default function App() {
   async function loginWithPassword(e: FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setLoading("password");
     try {
       const { status, data } = await callApi<
         AuthResponse | OrgRequiredResponse | SsoRequiredResponse | ErrorResponse
@@ -331,7 +216,7 @@ export default function App() {
   async function sendMagicCode(e?: FormEvent) {
     e?.preventDefault();
     setError("");
-    setLoading(true);
+    setLoading("magic-send");
     try {
       const { status, data } = await callApi<{ status: string } | ErrorResponse>(
         "POST",
@@ -352,7 +237,7 @@ export default function App() {
   async function verifyMagicCode(e: FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setLoading("magic-verify");
     try {
       const { status, data } = await callApi<
         AuthResponse | OrgRequiredResponse | SsoRequiredResponse | ErrorResponse
@@ -378,7 +263,7 @@ export default function App() {
   // ------ Org Selection ------
   async function selectOrg(selectedOrgId: string) {
     setError("");
-    setLoading(true);
+    setLoading("org-select");
     try {
       const { status, data } = await callApi<AuthResponse | ErrorResponse>(
         "POST",
@@ -407,6 +292,7 @@ export default function App() {
     } catch {
       // best-effort
     }
+    clearCsrfCache();
     setUser(null);
     setOrgId(null);
     setPendingToken("");
@@ -505,8 +391,8 @@ export default function App() {
               </Box>
 
               {isEmailStep ? (
-                <Button type="submit" size="3" disabled={loading || !email}>
-                  {loading ? <Spinner size="2" /> : "Continue"}
+                <Button type="submit" size="3" disabled={!!loading || !email}>
+                  {loading === "check-email" ? <Spinner size="2" /> : "Continue"}
                 </Button>
               ) : (
                 <>
@@ -527,18 +413,18 @@ export default function App() {
                     />
                   </Box>
 
-                  <Button type="submit" size="3" disabled={loading}>
-                    {loading ? <Spinner size="2" /> : "Sign in with Password"}
+                  <Button type="submit" size="3" disabled={!!loading}>
+                    {loading === "password" ? <Spinner size="2" /> : "Sign in with Password"}
                   </Button>
 
                   <Button
                     type="button"
                     variant="outline"
                     size="3"
-                    disabled={loading}
+                    disabled={!!loading}
                     onClick={() => sendMagicCode()}
                   >
-                    {loading ? <Spinner size="2" /> : "Send Magic Code Instead"}
+                    {loading === "magic-send" ? <Spinner size="2" /> : "Send Magic Code Instead"}
                   </Button>
                 </>
               )}
@@ -600,8 +486,8 @@ export default function App() {
                 />
               </Box>
 
-              <Button type="submit" size="3" disabled={loading}>
-                {loading ? <Spinner size="2" /> : "Verify Code"}
+              <Button type="submit" size="3" disabled={!!loading}>
+                {loading === "magic-verify" ? <Spinner size="2" /> : "Verify Code"}
               </Button>
             </Flex>
           </form>
@@ -610,7 +496,7 @@ export default function App() {
             variant="outline"
             size="3"
             mt="3"
-            style={{ width: "100%" }}
+            className="full-width"
             onClick={() => {
               setError("");
               setLoginStep("email");
@@ -644,8 +530,10 @@ export default function App() {
                 className="org-card"
                 role="button"
                 tabIndex={0}
+                aria-label={`Select ${oc.name}`}
                 onClick={() => !loading && selectOrg(oc.id)}
                 onKeyDown={(e) => e.key === "Enter" && !loading && selectOrg(oc.id)}
+                style={{ opacity: loading ? 0.6 : 1 }}
                 asChild
               >
                 <div>
@@ -667,7 +555,7 @@ export default function App() {
             variant="outline"
             size="3"
             mt="4"
-            style={{ width: "100%" }}
+            className="full-width"
             onClick={() => {
               setError("");
               setLoginStep("email");
@@ -708,15 +596,19 @@ export default function App() {
         )}
 
         {orgId && (
-          <Badge color="iris" size="2" mb="4">Org: {orgId}</Badge>
+          <Box mb="4">
+            <Badge color="iris" size="2">Org: {orgId}</Badge>
+          </Box>
         )}
 
         <Card size="2" mb="4">
-          <Text size="1" color="gray">User ID</Text>
-          <Code size="2" variant="ghost">{user?.id}</Code>
+          <Flex direction="column" gap="1">
+            <Text size="1" color="gray">User ID</Text>
+            <Code size="2" variant="ghost">{user?.id}</Code>
+          </Flex>
         </Card>
 
-        <Button color="red" size="3" style={{ width: "100%" }} onClick={logout}>
+        <Button color="red" size="3" className="full-width" onClick={logout}>
           Sign Out
         </Button>
       </Card>
