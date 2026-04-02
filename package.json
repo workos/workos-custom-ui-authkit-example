@@ -7,7 +7,8 @@
     "dev:client": "vite",
     "dev": "node --watch server.js & vite & wait",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/themes": "^3.3.0",
@@ -24,7 +25,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "supertest": "^7.2.2",
-    "typescript": "^5.5.3",
+    "typescript": "^6.0.2",
     "vite": "^6.0.0",
     "vitest": "^4.1.2"
   }
