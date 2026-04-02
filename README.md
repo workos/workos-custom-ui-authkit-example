@@ -18,7 +18,7 @@ This example does **not** use Hosted AuthKit. Instead, it implements a fully cus
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - [pnpm](https://pnpm.io/)
 - A [WorkOS account](https://dashboard.workos.com) with:
   - An API key and Client ID
