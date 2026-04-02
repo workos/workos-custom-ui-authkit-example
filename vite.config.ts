@@ -14,5 +14,8 @@ export default defineConfig(({ mode }) => {
         "/api": `http://localhost:${backendPort}`,
       },
     },
+    test: {
+      include: ["**/*.test.{ts,tsx,js}"],
+    },
   };
 });
