@@ -15,6 +15,7 @@ This example does **not** use Hosted AuthKit. Instead, it implements a fully cus
 - **Sealed sessions** — `loadSealedSession`, `authenticate`, `refresh`, `getLogoutUrl`
 - **CSRF protection** — double-submit cookie pattern on logout and org switching
 - **Session refresh** — transparent token refresh via `withAuth` middleware
+- **User impersonation** — dashboard-initiated impersonation works against this custom UI without exposing the hosted AuthKit page; the impersonator's email and reason surface in a banner on the dashboard view
 
 ## Prerequisites
 
@@ -23,6 +24,8 @@ This example does **not** use Hosted AuthKit. Instead, it implements a fully cus
 - A [WorkOS account](https://dashboard.workos.com) with:
   - An API key and Client ID
   - A redirect URI configured: `http://localhost:5176/api/auth/callback`
+  - (Optional, required for impersonation) A Sign-in endpoint configured: `http://localhost:5176/api/auth/initiate`
+  - (Optional, required for impersonation) Impersonation enabled under Authentication → Features → User Impersonation
   - (Optional) Google OAuth enabled under Social Login
   - (Optional) An SSO connection configured for a domain
 
@@ -108,6 +111,30 @@ The app handles these WorkOS authentication errors:
 
 - `organization_selection_required` — user belongs to multiple orgs, show picker
 - `sso_required` — domain requires SSO, redirect to IdP (fallback if domain check missed it)
+
+### Impersonation
+
+Dashboard-initiated user impersonation works against this custom UI without ever showing a hosted AuthKit page to your users. The key is the **Sign-in endpoint** configured on your application — set it to the server-only route `/api/auth/initiate`. This route is never linked from the custom UI, so organic traffic doesn't reach it; the only thing that hits it is the WorkOS dashboard's impersonation 302.
+
+The flow when an admin clicks **Impersonate user** in the WorkOS dashboard:
+
+1. WorkOS mints an `impersonation_token`, stores it in a cookie on `api.workos.com`, and 302s the browser to your Sign-in endpoint (`/api/auth/initiate`)
+2. The endpoint immediately redirects to `https://api.workos.com/user_management/authorize?...&provider=authkit`
+3. WorkOS reads the cookie, redeems the token, mints an authorization code, and 302s the browser to your redirect URI (`/api/auth/callback?code=…`)
+4. The callback handler exchanges the code via `authenticateWithCode`. The response includes an `impersonator` object (`{ email, reason }`) which is propagated through the sealed session and surfaced on `GET /api/auth/session`
+5. The frontend's dashboard view renders an orange "Impersonating X" banner with the impersonator's email, the reason, and a "Stop impersonating" button (logs out)
+
+The resulting access token is a normal WorkOS-signed JWT with an `act` claim — downstream services that validate via JWKS need no special handling.
+
+**Required dashboard configuration for impersonation:**
+
+| Setting            | Value                                                    |
+| ------------------ | -------------------------------------------------------- |
+| Redirect URI       | `http://localhost:5176/api/auth/callback`                |
+| Sign-in endpoint   | `http://localhost:5176/api/auth/initiate`                |
+| User Impersonation | Enabled (Authentication → Features → User Impersonation) |
+
+Without the Sign-in endpoint set, the dashboard takes a different code path that lands `?code=` directly on the redirect URI — that works for impersonation in isolation but is not the pattern most production apps end up wanting, since it can collide with PKCE-based browser SDK flows.
 
 ## UI
 

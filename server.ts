@@ -24,11 +24,17 @@ for (const key of REQUIRED_ENV) {
 // App setup
 // ---------------------------------------------------------------------------
 
+interface Impersonator {
+  email: string;
+  reason: string | null;
+}
+
 interface SessionData {
   user: unknown;
   organizationId?: string;
   role?: string;
   permissions?: string[];
+  impersonator?: Impersonator | null;
 }
 
 type AppEnv = {
@@ -225,6 +231,7 @@ const withAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
           organizationId: refreshResult.organizationId,
           role: refreshResult.role,
           permissions: refreshResult.permissions,
+          impersonator: refreshResult.impersonator ?? null,
         });
         return next();
       }
@@ -308,6 +315,29 @@ app.get('/api/auth/google', async (c) => {
     console.error('Google auth URL error:', (err as Error).message);
     return c.redirect(`${FRONTEND_URL}?error=${encodeURIComponent((err as Error).message)}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/auth/initiate — "Sign-in endpoint" for the application
+//
+// Configured in the WorkOS dashboard as Applications → Redirects → Sign-in
+// endpoint = http://localhost:5176/api/auth/initiate
+//
+// This route is server-only — your custom UI handles regular sign-ins via
+// the direct authentication endpoints (password, magic auth, SSO). The
+// dashboard impersonation flow lands here when it needs to redeem an
+// impersonation token: WorkOS sets a context cookie on api.workos.com,
+// redirects here, and expects us to forward to /user_management/authorize so
+// the cookie can be redeemed and we get bounced to /api/auth/callback with
+// a real auth code.
+// ---------------------------------------------------------------------------
+app.get('/api/auth/initiate', (c) => {
+  const authorizationUrl = workos.userManagement.getAuthorizationUrl({
+    provider: 'authkit',
+    redirectUri: `${FRONTEND_URL}/api/auth/callback`,
+  });
+
+  return c.redirect(authorizationUrl);
 });
 
 // ---------------------------------------------------------------------------
@@ -482,6 +512,7 @@ app.get('/api/auth/session', withAuth, (c) => {
     organizationId: session.organizationId,
     role: session.role,
     permissions: session.permissions,
+    impersonator: session.impersonator ?? null,
   });
 });
 

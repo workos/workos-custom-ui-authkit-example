@@ -1,18 +1,42 @@
-import { Avatar, Badge, Box, Button, Card, Code, Flex, Heading, Text } from '@radix-ui/themes';
-import type { LogEntry, User } from '../types';
+import { Avatar, Badge, Box, Button, Callout, Card, Code, Flex, Heading, Text } from '@radix-ui/themes';
+import type { Impersonator, LogEntry, User } from '../types';
 import { LogPanel } from '../components/LogPanel';
 
 interface Props {
   user: User;
   orgId: string | null;
+  impersonator: Impersonator | null;
   logs: LogEntry[];
   onLogout: () => void;
 }
 
-export function DashboardView({ user, orgId, logs, onLogout }: Props) {
+export function DashboardView({ user, orgId, impersonator, logs, onLogout }: Props) {
   return (
     <div className="page">
       <Card size="3" className="auth-card">
+        {impersonator && (
+          <Callout.Root color="orange" mb="4">
+            <Callout.Text>
+              <Flex direction="column" gap="1">
+                <Text weight="bold">Impersonating {user.email}</Text>
+                <Text size="2">
+                  Acting as <Code variant="ghost">{impersonator.email}</Code>
+                  {impersonator.reason && (
+                    <>
+                      {' · Reason: '}
+                      <Text as="span">{impersonator.reason}</Text>
+                    </>
+                  )}
+                </Text>
+                <Box mt="2">
+                  <Button size="1" color="orange" variant="soft" onClick={onLogout}>
+                    Stop impersonating
+                  </Button>
+                </Box>
+              </Flex>
+            </Callout.Text>
+          </Callout.Root>
+        )}
         <Heading size="5" align="center" mb="5">
           Dashboard
         </Heading>

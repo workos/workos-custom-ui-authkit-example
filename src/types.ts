@@ -6,6 +6,11 @@ export interface User {
   profilePictureUrl: string | null;
 }
 
+export interface Impersonator {
+  email: string;
+  reason: string | null;
+}
+
 export interface OrgChoice {
   id: string;
   name: string;
@@ -15,6 +20,7 @@ export interface AuthResponse {
   status: 'authenticated';
   user: User;
   organizationId?: string;
+  impersonator?: Impersonator | null;
 }
 
 export interface OrgRequiredResponse {
@@ -38,6 +44,7 @@ export interface SessionResponse {
   authenticated: boolean;
   user?: User;
   organizationId?: string;
+  impersonator?: Impersonator | null;
   reason?: string;
 }
 
