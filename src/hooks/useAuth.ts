@@ -4,6 +4,7 @@ import type {
   AuthResponse,
   CheckEmailResponse,
   ErrorResponse,
+  Impersonator,
   LogEntry,
   LoginStep,
   OrgChoice,
@@ -25,6 +26,7 @@ export function useAuth() {
   const [loginStep, setLoginStep] = useState<LoginStep>('email');
   const [user, setUser] = useState<User | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [impersonator, setImpersonator] = useState<Impersonator | null>(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +75,7 @@ export function useAuth() {
   function handleAuthSuccess(data: AuthResponse) {
     setUser(data.user);
     setOrgId(data.organizationId ?? null);
+    setImpersonator(data.impersonator ?? null);
     setPendingToken('');
     setOrgChoices([]);
     setError('');
@@ -116,6 +119,7 @@ export function useAuth() {
         if (status === 200 && data.authenticated && data.user) {
           setUser(data.user);
           setOrgId(data.organizationId ?? null);
+          setImpersonator(data.impersonator ?? null);
           setView('dashboard');
         } else {
           setView('login');
@@ -258,6 +262,7 @@ export function useAuth() {
       clearCsrfCache();
       setUser(null);
       setOrgId(null);
+      setImpersonator(null);
       setPendingToken('');
       setOrgChoices([]);
       setLoginStep('email');
@@ -280,6 +285,7 @@ export function useAuth() {
     loginStep,
     user,
     orgId,
+    impersonator,
     email,
     password,
     magicCode,

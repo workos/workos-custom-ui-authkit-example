@@ -8,7 +8,8 @@ import './app.css';
 
 export default function App() {
   const auth = useAuth();
-
+  console.log(auth);
+  console.log(auth.view);
   if (auth.view === 'loading') {
     return (
       <Flex className="page" align="center" justify="center">
@@ -69,5 +70,13 @@ export default function App() {
   }
 
   // view === "dashboard"
-  return <DashboardView user={auth.user!} orgId={auth.orgId} logs={auth.logs} onLogout={auth.logout} />;
+  return (
+    <DashboardView
+      user={auth.user!}
+      orgId={auth.orgId}
+      impersonator={auth.impersonator}
+      logs={auth.logs}
+      onLogout={auth.logout}
+    />
+  );
 }
