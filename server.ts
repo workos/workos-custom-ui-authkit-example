@@ -209,7 +209,7 @@ const withAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
     const authResult = await session.authenticate();
 
     if (authResult.authenticated) {
-      c.set('session', authResult as unknown as SessionData);
+      c.set('session', authResult);
       return next();
     }
 
@@ -226,13 +226,7 @@ const withAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
 
       if (refreshResult.authenticated) {
         setSessionCookie(c, refreshResult.sealedSession!);
-        c.set('session', {
-          user: refreshResult.user,
-          organizationId: refreshResult.organizationId,
-          role: refreshResult.role,
-          permissions: refreshResult.permissions,
-          impersonator: refreshResult.impersonator ?? null,
-        });
+        c.set('session', refreshResult);
         return next();
       }
     } catch {
