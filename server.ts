@@ -45,18 +45,6 @@ type AppEnv = {
 
 const app = new Hono<AppEnv>();
 
-app.use('*', async (c, next) => {
-  const start = Date.now();
-  await next();
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
-  log('http.request', {
-    method: c.req.method,
-    path: c.req.path,
-    status: c.res.status,
-    duration_ms: Date.now() - start,
-  });
-});
-
 const workos = new WorkOS(process.env.WORKOS_API_KEY!, {
   clientId: process.env.WORKOS_CLIENT_ID!,
 });
@@ -121,19 +109,6 @@ app.get('/api/auth/csrf-token', (c) => {
   const token = generateCsrfToken(c);
   return c.json({ csrfToken: token });
 });
-
-// ---------------------------------------------------------------------------
-// Logging
-// ---------------------------------------------------------------------------
-
-function log(event: string, data: Record<string, unknown> = {}): void {
-  console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...data }));
-}
-
-function truncate(value: string | undefined, n = 8): string | undefined {
-  if (!value) return value;
-  return value.length > n ? `${value.slice(0, n)}…(${value.length})` : value;
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -220,14 +195,10 @@ const NO_REFRESH_REASONS = new Set(['no_session_cookie_provided', 'invalid_sessi
 
 const withAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   const sessionData = getCookie(c, SESSION_COOKIE);
-  const path = c.req.path;
 
   if (!sessionData) {
-    log('withAuth.no_cookie', { path });
     return c.json({ authenticated: false, reason: 'no_session_cookie' }, 401);
   }
-
-  log('withAuth.cookie_present', { path, sealed: truncate(sessionData) });
 
   try {
     const session = workos.userManagement.loadSealedSession({
@@ -238,25 +209,11 @@ const withAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
     const authResult = await session.authenticate();
 
     if (authResult.authenticated) {
-      const impersonator = (authResult as { impersonator?: Impersonator | null }).impersonator ?? null;
-      log('withAuth.authenticated', {
-        path,
-        user_id: (authResult.user as { id?: string } | undefined)?.id,
-        organization_id: authResult.organizationId,
-        impersonator,
-      });
-      c.set('session', {
-        user: authResult.user,
-        organizationId: authResult.organizationId,
-        role: (authResult as { role?: string }).role,
-        permissions: (authResult as { permissions?: string[] }).permissions,
-        impersonator,
-      });
+      c.set('session', authResult as unknown as SessionData);
       return next();
     }
 
     const { reason } = authResult;
-    log('withAuth.not_authenticated', { path, reason });
 
     if (NO_REFRESH_REASONS.has(reason)) {
       clearSessionCookie(c);
@@ -268,31 +225,24 @@ const withAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
       const refreshResult = await session.refresh();
 
       if (refreshResult.authenticated) {
-        const impersonator = (refreshResult as { impersonator?: Impersonator | null }).impersonator ?? null;
-        log('withAuth.refreshed', {
-          path,
-          user_id: (refreshResult.user as { id?: string } | undefined)?.id,
-          impersonator,
-        });
         setSessionCookie(c, refreshResult.sealedSession!);
         c.set('session', {
           user: refreshResult.user,
           organizationId: refreshResult.organizationId,
           role: refreshResult.role,
           permissions: refreshResult.permissions,
-          impersonator,
+          impersonator: refreshResult.impersonator ?? null,
         });
         return next();
       }
-      log('withAuth.refresh_failed', { path });
-    } catch (refreshErr) {
-      log('withAuth.refresh_threw', { path, message: (refreshErr as Error).message });
+    } catch {
+      // refresh failed
     }
 
     clearSessionCookie(c);
     return c.json({ authenticated: false, reason: reason || 'session_expired' }, 401);
   } catch (err) {
-    log('withAuth.middleware_error', { path, message: (err as Error).message });
+    console.error('Auth middleware error:', (err as Error).message);
     clearSessionCookie(c);
     return c.json({ authenticated: false, reason: 'session_error' }, 401);
   }
@@ -382,14 +332,11 @@ app.get('/api/auth/google', async (c) => {
 // a real auth code.
 // ---------------------------------------------------------------------------
 app.get('/api/auth/initiate', (c) => {
-  log('initiate.entry', { query: c.req.query() });
-
   const authorizationUrl = workos.userManagement.getAuthorizationUrl({
     provider: 'authkit',
     redirectUri: `${FRONTEND_URL}/api/auth/callback`,
   });
 
-  log('initiate.redirect', { authorizationUrl });
   return c.redirect(authorizationUrl);
 });
 
@@ -398,20 +345,9 @@ app.get('/api/auth/initiate', (c) => {
 // ---------------------------------------------------------------------------
 app.get('/api/auth/callback', async (c) => {
   const code = c.req.query('code');
-  const queryKeys = Object.keys(c.req.query());
-
-  log('callback.entry', {
-    queryKeys,
-    code: truncate(code),
-    has_state: !!c.req.query('state'),
-    error: c.req.query('error'),
-    error_description: c.req.query('error_description'),
-    referer: c.req.header('referer'),
-  });
 
   if (!code) {
     const errMsg = c.req.query('error_description') || c.req.query('error') || 'Missing authorization code';
-    log('callback.no_code', { errMsg });
     return c.redirect(`${FRONTEND_URL}?error=${encodeURIComponent(errMsg)}`);
   }
 
@@ -421,37 +357,17 @@ app.get('/api/auth/callback', async (c) => {
       session: sessionConfig,
     });
 
-    log('callback.authenticated', {
-      user_id: (result.user as { id?: string } | undefined)?.id,
-      user_email: (result.user as { email?: string } | undefined)?.email,
-      organization_id: result.organizationId,
-      has_sealed_session: !!result.sealedSession,
-      impersonator: result.impersonator ?? null,
-      is_impersonating: !!result.impersonator,
-    });
-
     setSessionCookie(c, result.sealedSession!);
-    log('callback.session_cookie_set', { redirect_to: FRONTEND_URL });
     return c.redirect(FRONTEND_URL);
   } catch (err) {
     const wErr = err as WorkOSError;
     if (isOrgSelectionRequired(wErr)) {
-      log('callback.org_selection_required', {
-        organization_count: wErr.rawData?.organizations?.length ?? 0,
-      });
       const token = wErr.rawData!.pending_authentication_token;
       const orgs = encodeURIComponent(JSON.stringify(wErr.rawData!.organizations ?? []));
       return c.redirect(`${FRONTEND_URL}?org_selection=true&token=${token}&orgs=${orgs}`);
     }
 
-    log('callback.error', {
-      message: wErr.message,
-      status: wErr.status,
-      code: wErr.code,
-      error: wErr.error,
-      errorDescription: wErr.errorDescription,
-      rawData: wErr.rawData,
-    });
+    console.error('OAuth callback error:', wErr.message);
     return c.redirect(`${FRONTEND_URL}?error=${encodeURIComponent(wErr.errorDescription || wErr.message)}`);
   }
 });
