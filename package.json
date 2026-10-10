@@ -21,7 +21,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.12",
+    "@hono/node-server": "^1.19.13",
     "@radix-ui/themes": "^3.3.0",
     "@workos-inc/node": "^8.10.0",
     "dotenv": "^17.4.0",
